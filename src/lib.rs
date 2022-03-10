@@ -52,9 +52,12 @@ pub fn run(config: Config) -> MyResult<()> {
         .map_err(|e| format!("{}: {}", config.in_file, e))?;
     let mut out_file = create(config.out_file.as_ref().map(|s| s.as_str()))?;
     let mut line = String::new();
-    let mut prev_line: Option<String> = None;
+    let mut prev_line = String::new();
     let mut count: u64 = 0;
-    let mut print_output_line = |count: u64, s: &str| -> MyResult<()> {
+    let mut print_line = |count: u64, s: &str| -> MyResult<()> {
+        if count == 0 {
+            return Ok(());
+        }
         let output = if config.count {
             format!("{:>4} {}", count, s)
         } else {
@@ -68,26 +71,16 @@ pub fn run(config: Config) -> MyResult<()> {
         if bytes == 0 {
             break;
         }
-        match &prev_line {
-            None => {
-                prev_line = Some(line.clone());
-                count = 1;
-            }
-            Some(prev) => {
-                if prev.trim_end() == line.trim_end() {
-                    count += 1;
-                } else {
-                    print_output_line(count, prev)?;
-                    prev_line = Some(line.clone());
-                    count = 1;
-                }
-            },
+        if prev_line.trim_end() == line.trim_end() {
+            count += 1;
+        } else {
+            print_line(count, &prev_line)?;
+            prev_line = line.clone();
+            count = 1;
         }
         line.clear();
     }
-    if let Some(prev) = &prev_line {
-        print_output_line(count, prev)?;
-    }
+    print_line(count, &prev_line)?;
     Ok(())
 }
 
